@@ -18,8 +18,26 @@ class SearchableSelect extends Select
     {
         parent::__construct($name, $attribute, $resolveCallback);
         $this->withMeta([
-            "label" => "title",
-            "valueField" => "id"
+            "label" => null,
+            "labelPrefix" => null,
+            "valueField" => "id",
+            "isMultiple" => false,
+            "max" => 20,
+            "searchable" => false
+        ]);
+    }
+
+    public function max($max)
+    {
+        return $this->withMeta([
+            "max" => $max
+        ]);
+    }
+
+    public function multiple()
+    {
+        return $this->withMeta([
+            "isMultiple" => true
         ]);
     }
 
@@ -29,16 +47,30 @@ class SearchableSelect extends Select
         if (class_exists($name)) {
             $name = $name::uriKey();
         }
-        
-        return $this->withMeta([
+
+        $meta = [
             "searchableResource" => $name
-        ]);
+        ];
+
+        if (!isset($this->meta["label"])) {
+            $resource = Nova::resourceForKey($name);
+            $meta["label"] = $resource::$title;
+        }
+
+        return $this->withMeta($meta);
     }
 
     public function label($label)
     {
         return $this->withMeta([
             "label" => $label
+        ]);
+    }
+
+    public function labelPrefix($labelPrefix)
+    {
+        return $this->withMeta([
+            "labelPrefix" => $labelPrefix
         ]);
     }
 
@@ -62,8 +94,22 @@ class SearchableSelect extends Select
             if (!$labelValue) {
                 return $value;
             }
-            
+
             return $labelValue;
         });
+    }
+
+    public function loadResourcesOnNew()
+    {
+        return $this->withMeta([
+            "loadResourcesOnNew" => true
+        ]);
+    }
+    
+    public function useBaseSearch($useBaseSearch = true)
+    {
+        return $this->withMeta([
+            "searchable" => $useBaseSearch
+        ]);
     }
 }
