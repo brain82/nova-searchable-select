@@ -9,10 +9,44 @@ class SearchableSelectController extends Controller
 {
     public function index(ResourceIndexRequest $request)
     {
-        $items = $request->toQuery()->get([$request->get("label"), $request->get("value")])->each(function ($item) use ($request) {
-            $item->display = $item->{$request->get("label")};
+        $searchable = $request->get("searchable", false);
+        $resource = $request->resource();
+        $label = $request->get("label", $resource::$title);
+        $labelPrefix = $request->get("labelPrefix", false);
+
+        if ($searchable && $request->filled('search')) {
+            $items = $request->model()::search($request->get('search'));
+        } else {
+            $items = $request->toQuery();
+        }
+
+        if ($request->has("use_resource_ids")) {
+            $ids = $request->has("resource_ids") ? json_decode($request->get("resource_ids")) : [];
+            $items = $items->whereIn($request->get("value"), $ids);
+        }
+
+        if ($request->has("ignore_resource_ids")) {
+            $ids = $request->has("resource_ids") ? json_decode($request->get("resource_ids")) : [];
+            $items = $items->whereNotIn($request->get("value"), $ids);
+        }
+
+        if ($request->has("max")) {
+            $items = $items->take($request->get("max"));
+        }
+    
+        if (!$searchable) { // Don't apply the relatableQuery if not searchable, it won't handle it
+            $request->resource()::relatableQuery($request, $items);
+        }
+
+        $items = $items->get()->makeVisible(['display', 'value'])->each(function ($item) use ($request, $labelPrefix, $label) {
+            $item->display = '';
+            if($labelPrefix) {
+                $item->display .= $item->{$labelPrefix} . ': ';
+            }
+            $item->display .= $item->{$label};
             $item->value = $item->{$request->get("value")};
         });
+
         $resource = $request->resource();
 
         return response()->json([
